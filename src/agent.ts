@@ -36,9 +36,7 @@ export default class HttpsProxyAgent extends Agent {
 			opts = _opts;
 		}
 		if (!opts) {
-			throw new Error(
-				'an HTTP(S) proxy server `host` and `port` must be specified!'
-			);
+			throw new Error('an HTTP(S) proxy server `host` and `port` must be specified!');
 		}
 		debug('creating new HttpsProxyAgent instance: %o', opts);
 		super(opts);
@@ -82,10 +80,7 @@ export default class HttpsProxyAgent extends Agent {
 	 *
 	 * @api protected
 	 */
-	async callback(
-		req: ClientRequest,
-		opts: RequestOptions
-	): Promise<net.Socket> {
+	async callback(req: ClientRequest, opts: RequestOptions): Promise<net.Socket> {
 		const { proxy, secureProxy } = this;
 
 		// Create a socket connection to the proxy server.
@@ -104,9 +99,7 @@ export default class HttpsProxyAgent extends Agent {
 
 		// Inject the `Proxy-Authorization` header if necessary.
 		if (proxy.auth) {
-			headers['Proxy-Authorization'] = `Basic ${Buffer.from(
-				proxy.auth
-			).toString('base64')}`;
+			headers['Proxy-Authorization'] = `Basic ${Buffer.from(proxy.auth).toString('base64')}`;
 		}
 
 		// The `Host` header should only include the port
@@ -126,10 +119,7 @@ export default class HttpsProxyAgent extends Agent {
 
 		socket.write(`${payload}\r\n`);
 
-		const {
-			statusCode,
-			buffered
-		} = await proxyResponsePromise;
+		const { statusCode, buffered } = await proxyResponsePromise;
 
 		if (statusCode === 200) {
 			req.once('socket', resume);
@@ -139,10 +129,23 @@ export default class HttpsProxyAgent extends Agent {
 				// this socket connection to a TLS connection.
 				debug('Upgrading socket connection to TLS');
 				const servername = opts.servername || opts.host;
-				return tls.connect({
+
+				const tlsSocket = tls.connect({
 					...omit(opts, 'host', 'hostname', 'path', 'port'),
 					socket,
 					servername
+				});
+
+				return new Promise((resolve, reject) => {
+					const errCb = (err: Error) => {
+						reject(err);
+					};
+					tlsSocket.once('error', errCb);
+
+					tlsSocket.once('secureConnect', () => {
+						resolve(tlsSocket);
+						tlsSocket.off('error', errCb);
+					});
 				});
 			}
 
@@ -200,7 +203,7 @@ function omit<T extends object, K extends [...(keyof T)[]]>(
 	[K2 in Exclude<keyof T, K[number]>]: T[K2];
 } {
 	const ret = {} as {
-		[K in keyof typeof obj]: (typeof obj)[K];
+		[K in keyof typeof obj]: typeof obj[K];
 	};
 	let key: keyof typeof obj;
 	for (key in obj) {
